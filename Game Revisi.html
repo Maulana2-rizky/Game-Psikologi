@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Memory Game Mahasiswa</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      text-align: center;
+      background: linear-gradient(to right, #a1c4fd, #c2e9fb);
+      margin: 0;
+      padding: 0;
+    }
+    h1 {
+      margin-top: 20px;
+      color: #333;
+    }
+    .level-select, .game-board, .result {
+      margin-top: 30px;
+    }
+    .card {
+      width: 100px;
+      height: 100px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin: 10px;
+      background: #2196f3;
+      color: white;
+      font-size: 16px;
+      font-weight: bold;
+      text-align: center;
+      cursor: pointer;
+      border-radius: 12px;
+      user-select: none;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+    .matched {
+      background: #4caf50 !important;
+      cursor: default;
+      box-shadow: none;
+    }
+    .hidden {
+      background: #ccc;
+      color: transparent;
+    }
+    button {
+      padding: 10px 20px;
+      margin: 10px;
+      font-size: 16px;
+      background-color: #1976d2;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    button:hover {
+      background-color: #0d47a1;
+    }
+    #info {
+      margin-top: 20px;
+      font-size: 18px;
+      color: #333;
+    }
+    .timer {
+      margin-top: 10px;
+      font-size: 16px;
+      color: #555;
+    }
+  </style>
+</head>
+<body>
+  <h1>Memory Challenge: Nama Kota</h1>
+  <div class="level-select">
+    <p>Pilih Tingkat Kesulitan:</p>
+    <button onclick="startGame(6)">Mudah</button>
+    <button onclick="startGame(8)">Sedang</button>
+    <button onclick="startGame(12)">Sulit</button>
+  </div>
+
+  <div class="game-board" id="gameBoard" style="display: none;"></div>
+  <div id="info"></div>
+  <div class="timer" id="timer"></div>
+  <div class="result" id="result" style="display: none;"></div>
+
+  <audio id="matchSound" src="https://www.soundjay.com/button/beep-07.wav"></audio>
+  <audio id="wrongSound" src="https://www.soundjay.com/button/beep-10.wav"></audio>
+  <audio id="winSound" src="https://www.soundjay.com/human/applause-01.mp3"></audio>
+
+  <script>
+    let firstCard = null;
+    let secondCard = null;
+    let lockBoard = false;
+    let matches = 0;
+    let attempts = 0;
+    let totalPairs = 0;
+    let symbols = [];
+    let timerInterval;
+    let seconds = 0;
+
+    const cityNames = [
+      "Jakarta", "Surabaya", "Bandung", "Yogyakarta", "Medan", "Palembang",
+      "Denpasar", "Makassar", "Malang", "Semarang", "Padang", "Manado",
+      "Batam", "Balikpapan", "Pontianak", "Jayapura", "Pekanbaru", "Banjarmasin"
+    ];
+
+    function startGame(pairs) {
+      totalPairs = pairs;
+      matches = 0;
+      attempts = 0;
+      seconds = 0;
+      symbols = [];
+      clearInterval(timerInterval);
+
+      document.getElementById("result").style.display = "none";
+      document.querySelector(".level-select").style.display = "none";
+      document.getElementById("gameBoard").style.display = "block";
+      document.getElementById("info").innerText = "Percobaan: 0";
+      document.getElementById("timer").innerText = "Waktu: 0 detik";
+
+      const board = document.getElementById("gameBoard");
+      board.innerHTML = "";
+
+      const selectedCities = cityNames.slice(0, pairs);
+      symbols = [...selectedCities, ...selectedCities];
+      symbols.sort(() => 0.5 - Math.random());
+
+      symbols.forEach((symbol, index) => {
+        const card = document.createElement("div");
+        card.className = "card hidden";
+        card.dataset.symbol = symbol;
+        card.dataset.index = index;
+        card.onclick = () => flipCard(card);
+        card.innerText = symbol;
+        board.appendChild(card);
+      });
+
+      timerInterval = setInterval(() => {
+        seconds++;
+        document.getElementById("timer").innerText = `Waktu: ${seconds} detik`;
+      }, 1000);
+    }
+
+    function flipCard(card) {
+      if (lockBoard || card.classList.contains("matched") || card === firstCard) return;
+      card.classList.remove("hidden");
+
+      if (!firstCard) {
+        firstCard = card;
+      } else {
+        secondCard = card;
+        lockBoard = true;
+        attempts++;
+        document.getElementById("info").innerText = `Percobaan: ${attempts}`;
+
+        if (firstCard.dataset.symbol === secondCard.dataset.symbol) {
+          firstCard.classList.add("matched");
+          secondCard.classList.add("matched");
+          document.getElementById("matchSound").play();
+          matches++;
+          if (matches === totalPairs) {
+            endGame();
+          }
+          resetTurn();
+        } else {
+          document.getElementById("wrongSound").play();
+          setTimeout(() => {
+            firstCard.classList.add("hidden");
+            secondCard.classList.add("hidden");
+            resetTurn();
+          }, 1000);
+        }
+      }
+    }
+
+    function resetTurn() {
+      firstCard = null;
+      secondCard = null;
+      lockBoard = false;
+    }
+
+    function endGame() {
+      clearInterval(timerInterval);
+      document.getElementById("winSound").play();
+      const score = Math.min(100, Math.round((totalPairs / attempts) * 100));
+      let feedback = "";
+      if (score >= 85) {
+        feedback = "🎯 Hebat! Daya ingat kamu sangat kuat!";
+      } else if (score >= 60) {
+        feedback = "👍 Bagus! Tapi masih bisa ditingkatkan.";
+      } else if (score >= 40) {
+        feedback = "⚠️ Perlu latihan. Fokus dan strategi penting.";
+      } else {
+        feedback = "🧠 Ayo latihan lagi! Konsentrasi dan sabar itu kunci.";
+      }
+      const result = document.getElementById("result");
+      result.innerHTML = `
+        <h2>Permainan Selesai!</h2>
+        <p>Jumlah percobaan: ${attempts}</p>
+        <p>Waktu: ${seconds} detik</p>
+        <p>Daya ingat: ${score}%</p>
+        <p>${feedback}</p>
+        <button onclick="startGame(${totalPairs})">Main Lagi</button>
+        <button onclick="location.reload()">Pilih Level Baru</button>
+      `;
+      result.style.display = "block";
+    }
+  </script>
+</body>
+</html>
